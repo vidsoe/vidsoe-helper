@@ -37,9 +37,8 @@ EOF;
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     private static function register(){
-        $basename = 'vidsoe-helper/vidsoe-helper.php';
         $content = self::content();
-        $file = trailingslashit(WPMU_PLUGIN_DIR) . $basename;
+        $file = trailingslashit(WPMU_PLUGIN_DIR) . 'vidsoe-helper/vidsoe-helper.php';
         if(file_exists($file) and md5($content) === md5_file($file)){
             return;
         }
@@ -58,39 +57,44 @@ EOF;
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    private static function unregister(){
-        $basename = 'vidsoe-helper/vidsoe-helper.php';
-        $file = trailingslashit(WPMU_PLUGIN_DIR) . $basename;
-        if(!file_exists($file)){
-            return;
-        }
-        if(!@unlink($file)){
-            $error = error_get_last();
-            throw new Exception(sprintf('Unable to remove loader: %s', $error['message']));
-        }
-    }
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
     public static function install(){
+        $message = '';
         try {
             self::register();
         } catch(Throwable $t){ // Executed only in PHP 7, will not match in PHP 5
-            wp_die('<h1>' . __('Something went wrong.') . '</h1><p>' . $t->getMessage() . '.</p>');
+            $message = $t->getMessage();
         } catch(Exception $e){ // Executed only in PHP 5, will not be reached in PHP 7
-            wp_die('<h1>' . __('Something went wrong.') . '</h1><p>' . $e->getMessage() . '.</p>');
+            $message = $e->getMessage();
+        }
+        if($message){
+            add_action('admin_notices', function(){
+                echo '<div class="notice notice-error"><p>' . str_replace('_', ' ', __CLASS__) . ': ' . $message . '</p></div>';
+            });
         }
     }
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     public static function uninstall(){
+        $message = '';
         try {
-            self::unregister();
+            $file = trailingslashit(WPMU_PLUGIN_DIR) . 'vidsoe-helper/vidsoe-helper.php';
+            if(!file_exists($file)){
+                return;
+            }
+            if(!@unlink($file)){
+                $error = error_get_last();
+                throw new Exception(sprintf('Unable to remove loader: %s', $error['message']));
+            }
         } catch(Throwable $t){ // Executed only in PHP 7, will not match in PHP 5
-            wp_die('<h1>' . __('Something went wrong.') . '</h1><p>' . $t->getMessage() . '.</p>');
+            $message = $t->getMessage();
         } catch(Exception $e){ // Executed only in PHP 5, will not be reached in PHP 7
-            wp_die('<h1>' . __('Something went wrong.') . '</h1><p>' . $e->getMessage() . '.</p>');
+            $message = $e->getMessage();
+        }
+        if($message){
+            add_action('admin_notices', function(){
+                echo '<div class="notice notice-error"><p>' . str_replace('_', ' ', __CLASS__) . ': ' . $message . '</p></div>';
+            });
         }
     }
 
