@@ -2,6 +2,50 @@
 
 class Vidsoe_Helper_Loader {
 
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	//
+	// hooks
+	//
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    public static function activate(){
+        $message = '';
+        try {
+            self::install();
+        } catch(Throwable $t){ // Executed only in PHP 7, will not match in PHP 5
+            $message = $t->getMessage();
+        } catch(Exception $e){ // Executed only in PHP 5, will not be reached in PHP 7
+            $message = $e->getMessage();
+        }
+        if($message){
+            add_action('admin_notices', function(){
+                echo '<div class="notice notice-error"><p>' . str_replace('_', ' ', __CLASS__) . ': ' . $message . '</p></div>';
+            });
+        }
+    }
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    public static function uninstall(){
+        $message = '';
+        try {
+            self::remove();
+        } catch(Throwable $t){ // Executed only in PHP 7, will not match in PHP 5
+            $message = $t->getMessage();
+        } catch(Exception $e){ // Executed only in PHP 5, will not be reached in PHP 7
+            $message = $e->getMessage();
+        }
+        if($message){
+            add_action('admin_notices', function(){
+                echo '<div class="notice notice-error"><p>' . str_replace('_', ' ', __CLASS__) . ': ' . $message . '</p></div>';
+            });
+        }
+    }
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	//
+	// private methods
+	//
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     private static function content(){
@@ -36,7 +80,7 @@ EOF;
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    private static function register(){
+    private static function install(){
         $content = self::content();
         $file = trailingslashit(WPMU_PLUGIN_DIR) . 'vidsoe-helper/vidsoe-helper.php';
         if(file_exists($file) and md5($content) === md5_file($file)){
@@ -57,44 +101,14 @@ EOF;
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    public static function install(){
-        $message = '';
-        try {
-            self::register();
-        } catch(Throwable $t){ // Executed only in PHP 7, will not match in PHP 5
-            $message = $t->getMessage();
-        } catch(Exception $e){ // Executed only in PHP 5, will not be reached in PHP 7
-            $message = $e->getMessage();
+    private static function remove(){
+        $file = trailingslashit(WPMU_PLUGIN_DIR) . 'vidsoe-helper/vidsoe-helper.php';
+        if(!file_exists($file)){
+            return;
         }
-        if($message){
-            add_action('admin_notices', function(){
-                echo '<div class="notice notice-error"><p>' . str_replace('_', ' ', __CLASS__) . ': ' . $message . '</p></div>';
-            });
-        }
-    }
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    public static function uninstall(){
-        $message = '';
-        try {
-            $file = trailingslashit(WPMU_PLUGIN_DIR) . 'vidsoe-helper/vidsoe-helper.php';
-            if(!file_exists($file)){
-                return;
-            }
-            if(!@unlink($file)){
-                $error = error_get_last();
-                throw new Exception(sprintf('Unable to remove loader: %s', $error['message']));
-            }
-        } catch(Throwable $t){ // Executed only in PHP 7, will not match in PHP 5
-            $message = $t->getMessage();
-        } catch(Exception $e){ // Executed only in PHP 5, will not be reached in PHP 7
-            $message = $e->getMessage();
-        }
-        if($message){
-            add_action('admin_notices', function(){
-                echo '<div class="notice notice-error"><p>' . str_replace('_', ' ', __CLASS__) . ': ' . $message . '</p></div>';
-            });
+        if(!@unlink($file)){
+            $error = error_get_last();
+            throw new Exception(sprintf('Unable to remove loader: %s', $error['message']));
         }
     }
 

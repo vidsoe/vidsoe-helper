@@ -17,7 +17,7 @@ Version: 0.9.2
 
 defined('ABSPATH') or die('Hi there! I\'m just a plugin, not much I can do when called directly.');
 require_once(plugin_dir_path(__FILE__) . 'classes/class-vidsoe-helper-loader.php');
-register_activation_hook(__FILE__, ['Vidsoe_Helper_Loader', 'install']);
+register_activation_hook(__FILE__, ['Vidsoe_Helper_Loader', 'activate']);
 register_uninstall_hook(__FILE__, ['Vidsoe_Helper_Loader', 'uninstall']);
 if(class_exists('Vidsoe_Helper')){
     Vidsoe_Helper::build_update_checker('https://github.com/vidsoe/vidsoe-helper', __FILE__, 'vidsoe-helper');
