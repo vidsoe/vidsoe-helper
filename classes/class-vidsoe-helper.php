@@ -8,7 +8,7 @@ class Vidsoe_Helper {
 	//
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	private static $admin_notices = [], $custom_login_logo = [], $enqueue_js = false, $enqueue_stylesheet = false, $hide_the_dashboard = false, $hide_recaptcha_badge = false;
+	private static $admin_notices = [], $cl_image_sizes = [], $custom_login_logo = [], $enqueue_js = false, $enqueue_stylesheet = false, $hide_recaptcha_badge = false, $hide_the_dashboard = false;
 
 	/**
 	 * @return void
@@ -50,6 +50,52 @@ class Vidsoe_Helper {
 		}
 		return $user;
 	}
+
+	/**
+	 * @return false|int
+	 */
+	public static function image_downsize($out, $id, $size){
+		if(self::$cl_image_sizes){
+			if($out){
+	            return $out;
+	        }
+	        if(!wp_attachment_is_image($id)){
+	            return false;
+	        }
+	        if(!is_scalar($size)){
+	            return false;
+	        }
+	        if(!isset(self::$cl_image_sizes[$size])){
+	            return false;
+	        }
+			$meta_key = 'cl_' . self::md5(self::$cl_image_sizes[$size]['options']);
+			$result = get_post_meta($id, $meta_key, true);
+	        if(!$result){
+	            $result = self::cl_upload_attachment($id, $size);
+	            if(is_wp_error($result)){
+	                return false;
+	            }
+	        }
+	        $url = $result['secure_url'];
+	        $width = $result['width'];
+	        $height = $result['height'];
+	        if(!$url or !$width or !$height){
+	            return false;
+	        }
+	        return [$url, $width, $height, true];
+		}
+		return $out;
+	}
+
+	/**
+	 * @return array
+	 */
+	public static function image_size_names_choose($sizes){
+        foreach(self::$cl_image_sizes as $size => $args){
+            $sizes[$size] = $args['name'];
+        }
+        return $sizes;
+    }
 
 	/**
 	 * @return void
@@ -120,7 +166,7 @@ class Vidsoe_Helper {
 	//
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	private static $cf7_posted_data = [];
+	private static $cl_config = [], $cf7_posted_data = [];
 
 	/**
 	 * @return void
@@ -201,12 +247,6 @@ class Vidsoe_Helper {
 		$key = str_replace('-', '_', $key);
 		return $key;
     }
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	//
-	// <!-- Contact Form 7
-	//
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	/**
 	 * @return array
@@ -489,11 +529,119 @@ class Vidsoe_Helper {
 		return false;
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	//
-	// Contact Form 7 -->
-	//
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	/**
+	 * @return void
+	 */
+	public static function cl_add_image_size($name = '', $options = []){
+		$config = self::cl_config();
+		if(is_wp_error($config)){
+			return;
+		}
+        $size = sanitize_title($name);
+        if(remove_image_size($size)){
+            if(isset(self::$cl_image_sizes[$size])){
+                unset(self::$cl_image_sizes[$size]);
+            }
+        }
+        add_image_size($size); // fake - required
+        self::$cl_image_sizes[$size] = [
+            'name' => $name,
+            'options' => $options,
+        ];
+		if(!has_action('image_downsize', [__CLASS__, 'image_downsize'])){
+			add_action('image_downsize', [__CLASS__, 'image_downsize'], 10, 3);
+		}
+		if(!has_action('image_size_names_choose', [__CLASS__, 'image_size_names_choose'])){
+			add_action('image_size_names_choose', [__CLASS__, 'image_size_names_choose']);
+		}
+	}
+
+	/**
+	 * @return array|WP_Error
+	 */
+	public static function cl_config($config = []){
+		if(self::$cl_config){
+			return self::$cl_config;
+		}
+		if(!class_exists('Cloudinary')){
+			require_once(plugin_dir_path(dirname(__FILE__)) . 'includes/cloudinary-php-1.20.1/autoload.php');
+		}
+		if(self::array_keys_exist(['api_key', 'api_secret', 'cloud_name'], $config)){
+			self::$config = Cloudinary::config($config);
+			return self::$config;
+		}
+		$missing = [];
+        if(!defined('CL_API_KEY')){
+			$missing[] = 'API Key';
+        }
+        if(!defined('CL_API_SECRET')){
+			$missing[] = 'API Secret';
+        }
+        if(!defined('CL_CLOUD_NAME')){
+			$missing[] = 'Cloud Name';
+        }
+        if($missing){
+            return self::error(sprintf(__('Missing parameter(s): %s'), self::implode_and($missing)) . '.');
+        }
+		self::$config = Cloudinary::config([
+			'api_key' => CL_API_KEY,
+            'api_secret' => CL_API_SECRET,
+            'cloud_name' => CL_CLOUD_NAME,
+		]);
+		return self::$config;
+	}
+
+	/**
+	 * @return array|WP_Error
+	 */
+	public static function cl_upload_attachment($id = 0, $size = ''){
+		if(!wp_attachment_is_image($id)){
+            return self::error(__('File is not an image.'));
+        }
+        if(!is_scalar($size)){
+            return self::error(sprintf(__('Invalid parameter(s): %s'), 'size') . '.');
+        }
+        $size = sanitize_title($size);
+        if(!isset(self::$cl_image_sizes[$size])){
+            return self::error(sprintf(__('Invalid parameter(s): %s'), 'size') . '.');
+        }
+		$meta_key = 'cl_' . self::md5(self::$cl_image_sizes[$size]['options']);
+		$result = get_post_meta($id, $meta_key, true);
+        if($result){
+            return $result;
+        }
+        $file = get_attached_file($id);
+        $result = self::cl_upload_file($file, self::$cl_image_sizes[$size]['options']);
+        if(is_wp_error($result)){
+            return $result;
+        }
+        update_post_meta($id, $meta_key, $result);
+        return $result;
+	}
+
+	/**
+	 * @return array|WP_Error
+	 */
+	public static function cl_upload_file($file = '', $options = []){
+		if(!@file_exists($file)){
+            return self::error(__('File doesn&#8217;t exist?'), $file);
+        }
+		if(!class_exists('Cloudinary')){
+			require_once(plugin_dir_path(dirname(__FILE__)) . 'includes/cloudinary-php-1.20.1/autoload.php');
+		}
+		$message = '';
+        try {
+            $result = Cloudinary\Uploader::upload($file, $options);
+        } catch(Throwable $t){
+			$message = $t->getMessage();
+        } catch(Exception $e){
+			$message = $e->getMessage();
+        }
+		if($message){
+            return self::error($message);
+        }
+        return $result;
+	}
 
 	/**
 	 * @return WP_Role|null
@@ -1517,18 +1665,6 @@ class Vidsoe_Helper {
         return $tz_offset;
     }
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	//
-	// <!-- Zoom
-	//
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	//
-	// Zoom -->
-	//
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 }
