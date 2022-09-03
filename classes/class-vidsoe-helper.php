@@ -211,6 +211,21 @@ class Vidsoe_Helper {
 	/**
 	 * @return bool
 	 */
+	public static function are_plugins_active($plugins = []){
+        if(!is_array($plugins)){
+            return false;
+        }
+        foreach($plugins as $plugin){
+            if(!self::is_plugin_active($plugin)){
+                return false;
+            }
+        }
+        return true;
+    }
+
+	/**
+	 * @return bool
+	 */
    	public static function array_keys_exist($keys = [], $array = []){
 		if(!is_array($keys) or !is_array($array)){
             return false;
@@ -1046,6 +1061,17 @@ class Vidsoe_Helper {
 	/**
 	 * @return bool
 	 */
+	public static function is_plugin_deactivating($file = ''){
+		global $pagenow;
+        if(!@is_file($file)){
+            return false;
+        }
+        return (is_admin() and 'plugins.php' === $pagenow and isset($_GET['action'], $_GET['plugin']) and 'deactivate' === $_GET['action'] and plugin_basename($file) === $_GET['plugin']);
+	}
+
+	/**
+	 * @return bool
+	 */
 	public static function is_post_revision_or_auto_draft($post = null){
         return (wp_is_post_revision($post) or 'auto-draft' === get_post_status($post));
     }
@@ -1175,6 +1201,35 @@ class Vidsoe_Helper {
 		if(!has_action('login_headerurl', [__CLASS__, 'login_headerurl'])){
 			add_action('login_headerurl', [__CLASS__, 'login_headerurl']);
 		}
+    }
+
+	/**
+	 * @return string
+	 */
+	public static function md5($data = ''){
+        if(is_object($data)){
+            if($data instanceof Closure){
+				$data = serialize($data);
+            } else {
+                $data = wp_json_encode($data);
+                $data = json_decode($data, true);
+            }
+        }
+        if(is_array($data)){
+            $data = self::ksort_deep($data);
+            $data = maybe_serialize($data);
+        }
+        return md5($data);
+    }
+
+	/**
+	 * @return string
+	 */
+	public static function md5_to_uuid4($md5 = ''){
+        if(32 !== strlen($md5)){
+            return '';
+        }
+        return substr($md5, 0, 8) . '-' . substr($md5, 8, 4) . '-' . substr($md5, 12, 4) . '-' . substr($md5, 16, 4) . '-' . substr($md5, 20, 12);
     }
 
 	/**
