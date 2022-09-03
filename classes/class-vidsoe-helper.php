@@ -833,7 +833,7 @@ class Vidsoe_Helper {
 	 */
 	function file_get_html(...$args){
 		if(!class_exists('simple_html_dom')){
-			require_once(plugin_dir_path(dirname(__FILE__)) . 'includes/simplehtmldom-1.9.1/simple_html_dom.php');
+			require_once(plugin_dir_path(dirname(__FILE__)) . 'includes/simple-html-dom-1.9.1/simple_html_dom.php');
 		}
 		return file_get_html(...$args);
 	}
@@ -1570,7 +1570,7 @@ class Vidsoe_Helper {
 	 */
 	function str_get_html(...$args){
 		if(!class_exists('simple_html_dom')){
-			require_once(plugin_dir_path(dirname(__FILE__)) . 'includes/simplehtmldom-1.9.1/simple_html_dom.php');
+			require_once(plugin_dir_path(dirname(__FILE__)) . 'includes/simple-html-dom-1.9.1/simple_html_dom.php');
 		}
 		return str_get_html(...$args);
 	}
