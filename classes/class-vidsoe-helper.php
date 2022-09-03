@@ -624,6 +624,30 @@ class Vidsoe_Helper {
 	/**
 	 * @return array|WP_Error
 	 */
+	public static function cl_upload($file = '', $options = []){
+		if(!@file_exists($file)){
+			return self::error(__('File doesn&#8217;t exist?'), $file);
+		}
+		if(!class_exists('Cloudinary')){
+			require_once(plugin_dir_path(dirname(__FILE__)) . 'includes/cloudinary-php-1.20.1/autoload.php');
+		}
+		$message = '';
+		try {
+			$result = Cloudinary\Uploader::upload($file, $options);
+		} catch(Throwable $t){
+			$message = $t->getMessage();
+		} catch(Exception $e){
+			$message = $e->getMessage();
+		}
+		if($message){
+			return self::error($message);
+		}
+		return $result;
+	}
+
+	/**
+	 * @return array|WP_Error
+	 */
 	public static function cl_upload_attachment($id = 0, $size = ''){
 		if(!wp_attachment_is_image($id)){
             return self::error(__('File is not an image.'));
@@ -641,35 +665,11 @@ class Vidsoe_Helper {
             return $result;
         }
         $file = get_attached_file($id);
-        $result = self::cl_upload_file($file, self::$cl_image_sizes[$size]['options']);
+        $result = self::cl_upload($file, self::$cl_image_sizes[$size]['options']);
         if(is_wp_error($result)){
             return $result;
         }
         update_post_meta($id, $meta_key, $result);
-        return $result;
-	}
-
-	/**
-	 * @return array|WP_Error
-	 */
-	public static function cl_upload_file($file = '', $options = []){
-		if(!@file_exists($file)){
-            return self::error(__('File doesn&#8217;t exist?'), $file);
-        }
-		if(!class_exists('Cloudinary')){
-			require_once(plugin_dir_path(dirname(__FILE__)) . 'includes/cloudinary-php-1.20.1/autoload.php');
-		}
-		$message = '';
-        try {
-            $result = Cloudinary\Uploader::upload($file, $options);
-        } catch(Throwable $t){
-			$message = $t->getMessage();
-        } catch(Exception $e){
-			$message = $e->getMessage();
-        }
-		if($message){
-            return self::error($message);
-        }
         return $result;
 	}
 
