@@ -8,7 +8,7 @@ class Vidsoe_Helper {
 	//
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	private static $admin_notices = [], $cl_image_sizes = [], $custom_login_logo = [], $enqueue_js = false, $enqueue_stylesheet = false, $hide_recaptcha_badge = false, $hide_the_dashboard = false;
+	private static $admin_notices = [], $cl_image_sizes = [], $custom_login_logo = [], $enqueue_scripts = false, $enqueue_stylesheet = false, $hide_recaptcha_badge = false, $hide_the_dashboard = false, $sanitize_file_names = false;
 
 	/**
 	 * @return void
@@ -129,6 +129,18 @@ class Vidsoe_Helper {
 	}
 
 	/**
+	 * @return string
+	 */
+	public static function sanitize_file_name($filename){
+		if(self::$sanitize_file_names){
+			return implode('.', array_map(function($piece){
+				return preg_replace('/[^A-Za-z0-9_-]/', '', $piece);
+			}, explode('.', $filename)));
+		}
+		return $filename;
+	}
+
+	/**
 	 * @return bool
 	 */
 	static public function wordfence_ls_require_captcha($required){
@@ -139,7 +151,10 @@ class Vidsoe_Helper {
 	 * @return void
 	 */
 	public static function wp_enqueue_scripts(){
-		if(self::$enqueue_js){
+		if(self::$enqueue_scripts){
+			if(!wp_script_is('jquery')){
+				wp_enqueue_script('jquery');
+			}
 			self::local_enqueue(str_replace('_', '-', strtolower(__CLASS__)), plugin_dir_path(dirname(__FILE__)) . 'assets/' . str_replace('_', '-', strtolower(__CLASS__)) . '.js', ['jquery']);
 		}
 		if(self::$enqueue_stylesheet){
@@ -759,8 +774,11 @@ class Vidsoe_Helper {
 	/**
 	 * @return void
 	 */
-	public static function enqueue_js(){
-		self::$enqueue_js = true;
+	public static function enqueue_scripts(){
+		self::$enqueue_scripts = true;
+		if(!has_action('wp_enqueue_scripts', [__CLASS__, 'wp_enqueue_scripts'])){
+			add_action('wp_enqueue_scripts', [__CLASS__, 'wp_enqueue_scripts']);
+		}
 	}
 
 	/**
@@ -768,6 +786,9 @@ class Vidsoe_Helper {
 	 */
 	public static function enqueue_stylesheet(){
 		self::$enqueue_stylesheet = true;
+		if(!has_action('wp_enqueue_scripts', [__CLASS__, 'wp_enqueue_scripts'])){
+			add_action('wp_enqueue_scripts', [__CLASS__, 'wp_enqueue_scripts']);
+		}
     }
 
 	/**
@@ -1463,6 +1484,16 @@ class Vidsoe_Helper {
 	public static function remove_whitespaces($str = ''){
 		return trim(preg_replace('/[\n\r\s\t]+/', ' ', $str));
     }
+
+	/**
+	 * @return void
+	 */
+	public static function sanitize_file_names(){
+		self::$sanitize_file_names = true;
+		if(!has_action('sanitize_file_name', [__CLASS__, 'sanitize_file_name'])){
+			add_action('sanitize_file_name', [__CLASS__, 'sanitize_file_name']);
+		}
+	}
 
 	/**
 	 * @return array
